@@ -1,0 +1,1 @@
+worker: python sirius_moderation.py

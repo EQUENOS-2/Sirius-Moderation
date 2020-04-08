@@ -1,0 +1,6 @@
+discord
+asyncio
+pymongo
+dnspython
+Pymoe
+pip

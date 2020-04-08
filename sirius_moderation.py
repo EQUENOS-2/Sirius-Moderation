@@ -12,7 +12,7 @@ prefix = ".."
 client = commands.Bot(command_prefix=prefix)
 client.remove_command("help")
 
-token = open("box/bot_token.txt", "r").read() # f"{os.environ.get('moderator_token')}"
+token = f"{os.environ.get('moderator_token')}"
 
 db = cluster["guilds"]
 owner_ids = [301295716066787332]

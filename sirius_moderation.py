@@ -8,7 +8,7 @@ import pymongo
 from box.db_worker import cluster
 from functions import visual_delta
 
-prefix = ".."
+prefix = "'"
 client = commands.Bot(command_prefix=prefix)
 client.remove_command("help")
 

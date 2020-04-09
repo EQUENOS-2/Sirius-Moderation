@@ -353,6 +353,50 @@ class utility(commands.Cog):
             backup_txt=f"Сырой текст команды, на всякий случай\n`{ctx.message.content}`"
             await ctx.message.delete()
             await ctx.author.send(backup_txt)
+    
+    @commands.cooldown(1, 2, commands.BucketType.member)
+    @commands.command(aliases=['clear','del', 'delete'])
+    async def clean(self, ctx, n="1"):
+        if not has_permissions(ctx.author, ["manage_messages"]):
+            reply = discord.Embed(
+                title="❌ Недостаточно прав",
+                description=(
+                    "**Необходимые права:**\n"
+                    "> Управлять сообщениями"
+                ),
+                color=col("dr")
+            )
+            reply.set_footer(text=f"{ctx.author}", icon_url=f"{ctx.author.avatar_url}")
+            await ctx.send(embed=reply)
+        
+        elif not n.isdigit():
+            reply = discord.Embed(
+                title='💢 Упс',
+                description=f"Кол-во сообщений ({n}), должно быть целым числом",
+                color=col("dr")
+            )
+            reply.set_footer(text=f"{ctx.author}", icon_url=f"{ctx.author.avatar_url}")
+            await ctx.send(embed=reply)
+        else:
+            amount = int(n)+1
+            if amount > 500:
+                reply = discord.Embed(
+                    title="💢 Лимит",
+                    description="Разовый запрос на массовое удаление не должен превышать **500**",
+                    color=col("dr")
+                )
+                reply.set_footer(text=f"{ctx.author}", icon_url=f"{ctx.author.avatar_url}")
+                await ctx.send(embed=reply)
+
+            else:
+                await ctx.channel.purge(limit=amount)
+                reply = discord.Embed(
+                    title=f'🗑 Удалены сообщения :wastebasket:',
+                    description=f'Удалено {n} последних сообщений',
+                    color=discord.Color.light_grey()
+                )
+                reply.set_footer(text=f"{ctx.author}", icon_url=f"{ctx.author.avatar_url}")
+                await ctx.send(embed=reply, delete_after=3)
 
     #=======Errors=======
     @embed.error

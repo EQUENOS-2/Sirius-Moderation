@@ -293,6 +293,15 @@ class warn_system(commands.Cog):
                 reply.set_footer(text=f"{ctx.author}", icon_url=f"{ctx.author.avatar_url}")
                 await ctx.send(embed=reply)
             
+            elif member.top_role.position >= ctx.author.top_role.position:
+                reply = discord.Embed(
+                    title="💢 Позиция",
+                    description=f"Ваша наивысшая роль не выше роли {member}",
+                    color=col("dr")
+                )
+                reply.set_footer(text=f"{ctx.author}", icon_url=f"{ctx.author.avatar_url}")
+                await ctx.send(embed=reply)
+
             elif number != "all" and not number.isdigit():
                 reply = discord.Embed(
                     title="💢 Ошибка",

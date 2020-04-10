@@ -113,6 +113,24 @@ async def get_message(channel_id, message_id, guild):
         else:
             return message
 
+async def trigger_raw_reaction(message=None, emojis=None, user_to_check=None, timeout=None, client=None):
+
+    def check(payload):
+        return (
+            (message is None or message.id == payload.message.id) and
+            (user_to_check is None or user_to_check.id == payload.user_id) and
+            (emojis is None or payload.emoji in emojis)
+        )
+    
+    try:
+        payload = await client.wait_for("raw_reaction_add", check=check, timeout=timeout)
+    
+    except asyncio.TimeoutError:
+        return None
+    
+    else:
+        return payload
+
 class custom:
     def __init__(self, client):
         self.client = client
@@ -132,6 +150,12 @@ class utility(commands.Cog):
     async def on_ready(self):
         print(">> Utility cog is loaded")
     
+    # If bot removed
+    @commands.Cog.listener()
+    async def on_guild_remove(self, guild):
+        collection = db["reaction_roles"]
+        collection.find_one_and_delete({"_id": guild.id})
+
     # Server stats
     @commands.Cog.listener()
     async def on_member_join(self, member):
@@ -159,6 +183,65 @@ class utility(commands.Cog):
         if stats_on:
             await refresh_counters(member.guild)
     
+    # Reaction roles
+    @commands.Cog.listener()
+    async def on_raw_reaction_add(self, payload):
+        collection = db["reaction_roles"]
+        result = collection.find_one(
+            {
+                "_id": payload.guild_id,
+                f"{payload.message_id}.{payload.emoji}": {"$exists": True}
+            },
+            projection={f"{payload.message_id}.{payload.emoji}": True}
+        )
+        role_id = get_field(result, f"{payload.message_id}",  f"{payload.emoji}")
+        if role_id is not None:
+            guild = self.client.get_guild(payload.guild_id)
+            role = guild.get_role(role_id)
+            if role is not None:
+                member = guild.get_member(payload.user_id)
+                try:
+                    await member.add_roles(role)
+                    await member.send(f"Вам была выдана роль **{role}**")
+                except Exception:
+                    pass
+
+    @commands.Cog.listener()
+    async def on_raw_reaction_remove(self, payload):
+        collection = db["reaction_roles"]
+        result = collection.find_one(
+            {
+                "_id": payload.guild_id,
+                f"{payload.message_id}.{payload.emoji}": {"$exists": True}
+            },
+            projection={f"{payload.message_id}.{payload.emoji}": True}
+        )
+        role_id = get_field(result, f"{payload.message_id}",  f"{payload.emoji}")
+        if role_id is not None:
+            guild = self.client.get_guild(payload.guild_id)
+            role = guild.get_role(role_id)
+            if role is not None:
+                member = guild.get_member(payload.user_id)
+                if role in member.roles:
+                    try:
+                        await member.remove_roles(role)
+                        await member.send(f"У Вас была снята роль **{role}**")
+                    except Exception:
+                        pass
+
+    @commands.Cog.listener()
+    async def on_raw_message_delete(self, payload):
+        collection = db["reaction_roles"]
+        collection.find_one_and_update(
+            {
+                "_id": payload.guild_id,
+                f"{payload.message_id}": {"$exists": True}
+            },
+            {
+                "$unset": {f"{payload.message_id}": ""}
+            }
+        )
+
     #======== Commands ===========
 
     @commands.cooldown(1, 3, commands.BucketType.member)
@@ -353,7 +436,7 @@ class utility(commands.Cog):
             backup_txt=f"Сырой текст команды, на всякий случай\n`{ctx.message.content}`"
             await ctx.message.delete()
             await ctx.author.send(backup_txt)
-    
+
     @commands.cooldown(1, 2, commands.BucketType.member)
     @commands.command(aliases=['clear','del', 'delete'])
     async def clean(self, ctx, n="1"):
@@ -398,6 +481,82 @@ class utility(commands.Cog):
                 reply.set_footer(text=f"{ctx.author}", icon_url=f"{ctx.author.avatar_url}")
                 await ctx.send(embed=reply, delete_after=3)
 
+    @commands.cooldown(1, 2, commands.BucketType.member)
+    @commands.command(aliases=["reaction-roles", "rr"])
+    async def reaction_roles(self, ctx, *, role_s):
+        role = detect.role(ctx.guild, role_s)
+        if role is None:
+            reply = discord.Embed(
+                title="💢 Упс",
+                description=f"Вы указали {role_s}, подразумевая роль, но она не была найдена",
+                color=col("dr")
+            )
+            reply.set_footer(text=f"{ctx.author}", icon_url=f"{ctx.author.avatar_url}")
+            await ctx.send(embed=reply)
+        
+        elif role.position >= ctx.author.top_role.position and ctx.author.id != ctx.guild.owner_id:
+            reply = discord.Embed(
+                title="💢 Упс",
+                description=f"Роль <@&{role.id}> не ниже Вашей",
+                color=col("dr")
+            )
+            reply.set_footer(text=f"{ctx.author}", icon_url=f"{ctx.author.avatar_url}")
+            await ctx.send(embed=reply)
+
+        else:
+            reply = discord.Embed(
+                title=f"🎗 Роль {role} за реакцию",
+                description="Поставьте реакцию под нужным сообщением",
+                color=ctx.guild.me.color
+            )
+            reply.set_footer(text=f"{ctx.author}", icon_url=f"{ctx.author.avatar_url}")
+            my_message = await ctx.send(embed=reply)
+            await ctx.message.delete()
+
+            payload = await trigger_raw_reaction(client=self.client, user_to_check=ctx.author, timeout=60)
+
+            if payload is None:
+                reply = discord.Embed(
+                    title="⏳ Таймаут",
+                    description=f"Вы слишком долго не ставили реакцию, истекло 60 секунд",
+                    color=discord.Color.dark_blue()
+                )
+                reply.set_footer(text=f"{ctx.author}", icon_url=f"{ctx.author.avatar_url}")
+                await ctx.send(f"{ctx.author.mention}", embed=reply)
+                
+            else:
+                collection = db["reaction_roles"]
+                result = collection.find_one(
+                    {
+                        "_id": ctx.guild.id,
+                        f"{payload.message_id}.{payload.emoji}": {"$exists": True},
+                    },
+                    projection={f"{payload.message_id}.{payload.emoji}": True}
+                )
+                role_id = get_field(result, f"{payload.message_id}", f"{payload.emoji}")
+                if role_id is not None:
+                    reply = discord.Embed(
+                        title="💢 Упс",
+                        description=f"За реакцию {payload.emoji} уже выдаётся роль <@&{role_id}>",
+                        color=col("dr")
+                    )
+                    reply.set_footer(text=f"{ctx.author}", icon_url=f"{ctx.author.avatar_url}")
+                    await ctx.send(embed=reply)
+
+                else:
+                    collection.find_one_and_update(
+                        {"_id": ctx.guild.id},
+                        {"$set": {f"{payload.message_id}.{payload.emoji}": role.id}},
+                        upsert=True
+                    )
+                    reply = discord.Embed(
+                        title="✅ Настроено",
+                        description=f"Теперь роль <@&{role.id}> выдаётся за нажатие на реакцию {payload.emoji}",
+                        color=col("dg")
+                    )
+                    reply.set_footer(text=f"{ctx.author}", icon_url=f"{ctx.author.avatar_url}")
+                    await my_message.edit(embed=reply, delete_after=4)
+
     #=======Errors=======
     @embed.error
     async def embed_error(self, ctx, error):
@@ -418,6 +577,21 @@ class utility(commands.Cog):
                     f"**Пример:** {p}embed\n"
                     "==Server update!==\n"
                     "--Added Moderator role!--\n"
+                )
+            )
+            reply.set_footer(text = f"{ctx.author}", icon_url = f"{ctx.author.avatar_url}")
+            await ctx.send(embed = reply)
+
+    @reaction_roles.error
+    async def reaction_roles_error(self, ctx, error):
+        if isinstance(error, commands.MissingRequiredArgument):
+            p = ctx.prefix
+            cmd = ctx.command.name
+            reply = discord.Embed(
+                title = f"❓ Об аргументах `{p}{cmd}`",
+                description = (
+                    f"**Описание:** настраивает реакции под сообщением так, чтобы за них выдавались роли.\n"
+                    f'**Использование:** `{p}{cmd} @Роль`\n'
                 )
             )
             reply.set_footer(text = f"{ctx.author}", icon_url = f"{ctx.author.avatar_url}")

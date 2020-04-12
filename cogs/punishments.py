@@ -842,8 +842,8 @@ class punishments(commands.Cog):
             await ctx.send(embed=reply)
         
         else:
-            user = detect.user(self.client, user_s)
-            if user == None:
+            user = detect.user(user_s, self.client)
+            if user is None:
                 reply = discord.Embed(
                     title="💢 Упс",
                     description=f"Вы указали {user_s}, подразумевая пользователя, но он не был найден",
@@ -856,7 +856,7 @@ class punishments(commands.Cog):
                 member = ctx.guild.get_member(user.id)
                 perms_owned = True
 
-                if member != None:
+                if member is not None:
                     perms_owned = False
 
                     if ctx.author.top_role.position <= member.top_role.position and ctx.author.id != ctx.guild.owner_id:

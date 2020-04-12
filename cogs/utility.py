@@ -557,6 +557,31 @@ class utility(commands.Cog):
                     reply.set_footer(text=f"{ctx.author}", icon_url=f"{ctx.author.avatar_url}")
                     await my_message.edit(embed=reply, delete_after=4)
 
+    @commands.cooldown(1, 2, commands.BucketType.member)
+    @commands.command(aliases=["generate-invite", "gen-inv"])
+    async def generate_invite(self, ctx, *, user_s):
+        user = detect.user(user_s, self.client)
+        if user is None:
+            reply = discord.Embed(
+                title="💢 Упс",
+                description=f"Вы указали {member_s}, подразумевая пользователя, но он не был найден",
+                color=col("dr")
+            )
+            reply.set_footer(text=f"{ctx.author}", icon_url=f"{ctx.author.avatar_url}")
+            await ctx.send(embed=reply)
+        
+        elif not user.bot:
+            reply = discord.Embed(
+                title="💢 Упс",
+                description=f"{user} не является ботом",
+                color=col("dr")
+            )
+            reply.set_footer(text=f"{ctx.author}", icon_url=f"{ctx.author.avatar_url}")
+            await ctx.send(embed=reply)
+        
+        else:
+            await ctx.send(f"https://discordapp.com/api/oauth2/authorize?client_id={user.id}&permissions=8&scope=bot")
+
     #=======Errors=======
     @embed.error
     async def embed_error(self, ctx, error):
@@ -592,6 +617,21 @@ class utility(commands.Cog):
                 description = (
                     f"**Описание:** настраивает реакции под сообщением так, чтобы за них выдавались роли.\n"
                     f'**Использование:** `{p}{cmd} @Роль`\n'
+                )
+            )
+            reply.set_footer(text = f"{ctx.author}", icon_url = f"{ctx.author.avatar_url}")
+            await ctx.send(embed = reply)
+    
+    @generate_invite.error
+    async def generate_invite_error(self, ctx, error):
+        if isinstance(error, commands.MissingRequiredArgument):
+            p = ctx.prefix
+            cmd = ctx.command.name
+            reply = discord.Embed(
+                title = f"❓ Об аргументах `{p}{cmd}`",
+                description = (
+                    f"**Описание:** генерирует ссылку для приглашения выбранного бота\n"
+                    f'**Использование:** `{p}{cmd} @Бот`\n'
                 )
             )
             reply.set_footer(text = f"{ctx.author}", icon_url = f"{ctx.author.avatar_url}")

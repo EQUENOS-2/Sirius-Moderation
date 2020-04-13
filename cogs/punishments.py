@@ -897,9 +897,9 @@ class punishments(commands.Cog):
                     log_emb = discord.Embed(
                         title="⛔ Пользователь забанен",
                         description=(
-                            f"> **Пользователь:** {user}\n"
-                            f"> **Модератор:** {ctx.author}\n"
-                            f"> **Причина:** {reason}"
+                            f"**Пользователь:** {user}\n"
+                            f"**Модератор:** {ctx.author}\n"
+                            f"**Причина:** {reason}"
                         ),
                         color=discord.Color.red()
                     )

@@ -600,6 +600,26 @@ class settings(commands.Cog):
                 await ctx.send(embed=reply)
 
     #=======Errors==========
+    @welcome.error
+    async def welcome_error(self, ctx, error):
+        if isinstance(error, commands.MissingRequiredArgument):
+            p = ctx.prefix
+            cmd = ctx.command.name
+            reply = discord.Embed(
+                title = f"❓ Об аргументах `{p}{cmd}`",
+                description = (
+                    f"**Описание:** настраивает действия с новичками, имеет 3 раздела.\n"
+                    f"`{p}{cmd} message` - приветствие\n"
+                    f"`{p}{cmd} channel` - канал для приветствия\n"
+                    f"`{p}{cmd} roles` - роли для новичков\n"
+                    f'**Назначение:** `{p}{cmd} Раздел Значение`\n'
+                    f"**Удаление:** `{p}{cmd} Раздел delete`\n"
+                )
+            )
+            reply.set_footer(text = f"{ctx.author}", icon_url = f"{ctx.author.avatar_url}")
+            await ctx.send(embed = reply)
+
+
     @log_channel.error
     async def log_channel_error(self, ctx, error):
         if isinstance(error, commands.MissingRequiredArgument):

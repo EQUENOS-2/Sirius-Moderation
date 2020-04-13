@@ -21,7 +21,7 @@ def visual_delta(delta):
     for key in expanded_delta:
         num = expanded_delta[key]
         if num > 0:
-            out += f"{num} {key} "
+            out = f"{num} {key} " + out
     if out == "":
         out = "0 сек"
     out.strip()

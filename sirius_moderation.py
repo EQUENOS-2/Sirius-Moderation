@@ -9,7 +9,9 @@ from box.db_worker import cluster
 from functions import visual_delta
 
 prefix = "'"
-client = commands.Bot(command_prefix=prefix)
+intents = discord.Intents.default()
+intents.members = True
+client = commands.Bot(command_prefix=prefix, intents=intents)
 client.remove_command("help")
 
 token = f"{os.environ.get('moderator_token')}"

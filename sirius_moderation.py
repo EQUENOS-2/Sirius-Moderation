@@ -9,8 +9,7 @@ from box.db_worker import cluster
 from functions import visual_delta
 
 prefix = "'"
-intents = discord.Intents.default()
-intents.members = True
+intents = discord.Intents.all()
 client = commands.Bot(command_prefix=prefix, intents=intents)
 client.remove_command("help")
 

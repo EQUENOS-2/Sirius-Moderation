@@ -202,8 +202,7 @@ class utility(commands.Cog):
                 member = guild.get_member(payload.user_id)
                 try:
                     await member.add_roles(role)
-                    await member.send(f"Вам была выдана роль **{role}**")
-                except Exception:
+                except:
                     pass
 
     @commands.Cog.listener()
@@ -225,8 +224,7 @@ class utility(commands.Cog):
                 if role in member.roles:
                     try:
                         await member.remove_roles(role)
-                        await member.send(f"У Вас была снята роль **{role}**")
-                    except Exception:
+                    except:
                         pass
 
     @commands.Cog.listener()
